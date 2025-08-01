@@ -47,3 +47,11 @@ Install dev dependencies:
 ```
 opam install utop ocamlformat ocaml-lsp-server
 ```
+
+## Implementations in Other Languages
+
+### Rust
+
+- [ccl-rs](https://github.com/hon-gyu/ccl-rs)
+
+- [serde_ccl](https://github.com/LechintanTudor/serde_ccl)
