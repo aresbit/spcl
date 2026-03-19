@@ -14,8 +14,6 @@ typedef struct spcl_pair spcl_pair;
 typedef struct {
     char *key;
     char *value;
-    bool force_string;
-    bool force_nested;
 } spcl_key_val;
 
 typedef struct {

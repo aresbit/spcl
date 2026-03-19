@@ -1,13 +1,5 @@
-/= SPCL document (CCL + skills/prompt blocks)
-title = SPCL Example
-
-SKILLS:
-  - modern-c-makefile
-  - modern-c-dev
-
-PROMPT:
-  Rewrite this project into modern C.
-  Keep parser behavior compatible with CCL core syntax.
+/= CCL document
+title = CCL Example
 
 database =
   enabled = true

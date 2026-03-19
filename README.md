@@ -1,9 +1,10 @@
 # SPCL (C Edition)
 
-SPCL is a C rewrite of the original CCL project with an extended syntax profile:
+SPCL is a C rewrite of the original CCL project and now follows CCL core syntax only:
 
-- CCL core: `key = value`, indentation-based multiline values, recursive nested parsing.
-- SPCL extensions: `SKILLS:` block and `PROMPT:` block.
+- `key = value`
+- indentation-based multiline values
+- recursive nested parsing
 
 ## Build
 
@@ -22,41 +23,12 @@ make test
 ```sh
 ./build/bin/cclq examples/example.spcl
 ./build/bin/cclq examples/example.spcl database=ports
-./build/bin/cclq examples/example.spcl -- skills prompt
 ```
-
-## SPCL Syntax Extension
-
-### Skills block
-
-```txt
-SKILLS:
-  - modern-c-makefile
-  - modern-c-dev
-```
-
-Equivalent internal CCL form:
-
-```txt
-skills =
-  = modern-c-makefile
-  = modern-c-dev
-```
-
-### Prompt block
-
-```txt
-PROMPT:
-  Rewrite this project into modern C.
-  Keep strict warning flags.
-```
-
-This is stored as raw string payload under key `prompt`.
 
 ## Project Layout
 
 - `include/spcl.h`: public API
-- `src/parser.c`: CCL parser + SPCL block parser
+- `src/parser.c`: CCL parser
 - `src/model.c`: recursive model, merge, query, pretty printer
 - `src/io.c`: file decoding helper
 - `src/cclq.c`: CLI query tool

@@ -8,3 +8,5 @@
 - hardened string builder capacity growth checks against overflow
 - rewrote CLI query splitting with `sp_str_split_c8` + `sp_dyn_array`
 - fixed CLI parse-error path to release allocated argument buffers
+- removed non-CCL `SKILLS:` / `PROMPT:` block parsing extension
+- parser now accepts only CCL-style `key = value` input

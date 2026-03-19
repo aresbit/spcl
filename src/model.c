@@ -119,21 +119,6 @@ static spcl_node *singleton_value(const char *value) {
 static spcl_node *build_from_kvs(const spcl_kv_list *kvs);
 
 static spcl_node *child_from_kv(const spcl_key_val *kv) {
-    if (kv->force_string) {
-        return singleton_value(kv->value);
-    }
-
-    if (kv->force_nested) {
-        spcl_parse_result nested = spcl_parse_value(kv->value);
-        if (nested.ok) {
-            spcl_node *node = build_from_kvs(&nested.kvs);
-            spcl_parse_result_free(&nested);
-            return node;
-        }
-        spcl_parse_result_free(&nested);
-        return singleton_value(kv->value);
-    }
-
     spcl_parse_result nested = spcl_parse_value(kv->value);
     if (!nested.ok) {
         spcl_parse_result_free(&nested);
