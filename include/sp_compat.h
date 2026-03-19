@@ -6,8 +6,9 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 typedef struct {
     char *data;
@@ -16,38 +17,39 @@ typedef struct {
 } spc_strbuf;
 
 static inline void *spc_malloc(size_t n) {
-    return malloc(n);
+    if (n > UINT32_MAX) {
+        return NULL;
+    }
+    return sp_alloc((u32)n);
 }
 
 static inline void *spc_calloc(size_t n, size_t size) {
-    return calloc(n, size);
+    if (n != 0 && size > SIZE_MAX / n) {
+        return NULL;
+    }
+    return spc_malloc(n * size);
 }
 
 static inline void *spc_realloc(void *ptr, size_t n) {
-    return realloc(ptr, n);
+    if (n > UINT32_MAX) {
+        return NULL;
+    }
+    return sp_realloc(ptr, (u32)n);
 }
 
 static inline void spc_free(void *ptr) {
-    free(ptr);
+    if (!ptr) {
+        return;
+    }
+    sp_free(ptr);
 }
 
 static inline size_t spc_strlen(const char *s) {
-    size_t n = 0;
-    while (s[n] != '\0') {
-        ++n;
-    }
-    return n;
+    return (size_t)sp_cstr_len(s);
 }
 
 static inline int spc_streq(const char *a, const char *b) {
-    size_t i = 0;
-    while (a[i] != '\0' && b[i] != '\0') {
-        if (a[i] != b[i]) {
-            return 0;
-        }
-        ++i;
-    }
-    return a[i] == '\0' && b[i] == '\0';
+    return sp_cstr_equal(a, b) ? 1 : 0;
 }
 
 static inline int spc_strcaseeq(const char *a, const char *b) {
@@ -73,17 +75,14 @@ static inline const char *spc_strchr(const char *s, int c) {
 }
 
 static inline char *spc_substr_dup(const char *s, size_t n) {
-    char *out = (char *)spc_malloc(n + 1);
-    if (!out) {
+    if (n > UINT32_MAX) {
         return NULL;
     }
-    sp_memcpy(out, s, n);
-    out[n] = '\0';
-    return out;
+    return (char *)sp_cstr_copy_sized(s, (u32)n);
 }
 
 static inline char *spc_strdup(const char *s) {
-    return spc_substr_dup(s, spc_strlen(s));
+    return (char *)sp_cstr_copy(s);
 }
 
 static inline int spc_is_blank(char c) {
@@ -111,13 +110,28 @@ static inline char *spc_rtrim_dup(const char *s, size_t n) {
 }
 
 static inline bool spc_sb_ensure(spc_strbuf *sb, size_t extra) {
-    if (sb->len + extra + 1 <= sb->cap) {
+    if (extra > SIZE_MAX - sb->len - 1) {
+        return false;
+    }
+
+    size_t need = sb->len + extra + 1;
+    if (need <= sb->cap) {
         return true;
     }
-    size_t ncap = sb->cap;
-    while (sb->len + extra + 1 > ncap) {
+
+    size_t ncap = sb->cap == 0 ? 64 : sb->cap;
+    while (ncap < need) {
+        if (ncap > SIZE_MAX / 2) {
+            ncap = need;
+            break;
+        }
         ncap *= 2;
     }
+
+    if (ncap < need) {
+        return false;
+    }
+
     char *nbuf = (char *)spc_realloc(sb->data, ncap);
     if (!nbuf) {
         return false;

@@ -16,12 +16,12 @@ TEST_DIR := tests
 WARNINGS := -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -Wwrite-strings
 OPT ?= -O2
 CSTD := -std=c17
-CPPFLAGS := -I$(INC_DIR) -MMD -MP
+CPPFLAGS := -I$(INC_DIR) -MMD -MP -DSP_PS_DISABLE
 CFLAGS ?= $(CSTD) $(OPT) $(WARNINGS)
 LDFLAGS ?=
 LDLIBS ?=
 
-LIB_SRCS := $(SRC_DIR)/parser.c $(SRC_DIR)/model.c $(SRC_DIR)/io.c
+LIB_SRCS := $(SRC_DIR)/sp_impl.c $(SRC_DIR)/parser.c $(SRC_DIR)/model.c $(SRC_DIR)/io.c
 LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIB_DEPS := $(LIB_OBJS:.o=.d)
 

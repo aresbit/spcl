@@ -13,45 +13,51 @@ typedef struct {
 } cli_args;
 
 static int split_query(const char *q, const char ***out_parts, size_t *out_len) {
-    size_t len = 1;
-    for (const char *p = q; *p; ++p) {
-        if (*p == '=') {
-            ++len;
+    *out_parts = NULL;
+    *out_len = 0;
+
+    if (q[0] == '\0') {
+        const char **parts = (const char **)spc_calloc(1, sizeof(char *));
+        if (!parts) {
+            return -1;
         }
+        parts[0] = spc_strdup("");
+        if (!parts[0]) {
+            spc_free(parts);
+            return -1;
+        }
+        *out_parts = parts;
+        *out_len = 1;
+        return 0;
+    }
+
+    sp_dyn_array(sp_str_t) slices = sp_str_split_c8(sp_str_view(q), '=');
+    size_t len = (size_t)sp_dyn_array_size(slices);
+    if (len == 0) {
+        return -1;
     }
 
     const char **parts = (const char **)spc_calloc(len, sizeof(char *));
     if (!parts) {
-        *out_parts = NULL;
-        *out_len = 0;
+        sp_dyn_array_free(slices);
         return -1;
     }
 
-    size_t idx = 0;
-    const char *start = q;
-    for (const char *p = q;; ++p) {
-        if (*p == '=' || *p == '\0') {
-            size_t n = (size_t)(p - start);
-            char *piece = spc_substr_dup(start, n);
-            if (!piece) {
-                for (size_t i = 0; i < idx; ++i) {
-                    spc_free((void *)parts[i]);
-                }
-                spc_free(parts);
-                *out_parts = NULL;
-                *out_len = 0;
-                return -1;
+    for (size_t i = 0; i < len; ++i) {
+        parts[i] = spc_substr_dup(slices[i].data, slices[i].len);
+        if (!parts[i]) {
+            for (size_t j = 0; j < i; ++j) {
+                spc_free((void *)parts[j]);
             }
-            parts[idx++] = piece;
-            start = p + 1;
-        }
-        if (*p == '\0') {
-            break;
+            spc_free(parts);
+            sp_dyn_array_free(slices);
+            return -1;
         }
     }
+    sp_dyn_array_free(slices);
 
     *out_parts = parts;
-    *out_len = idx;
+    *out_len = len;
     return 0;
 }
 
@@ -71,9 +77,9 @@ static int parse_cli(int argc, char **argv, cli_args *out) {
     *out = (cli_args){0};
 
     if (argc == 2 && spc_streq(argv[1], "--help")) {
-        printf("%s [file [file ..]] <query>\n", argv[0]);
-        printf("%s [file [file ..]] -- [query [query ..]]\n", argv[0]);
-        printf("Query values in SPCL/CCL files. Queries are '='-separated keys.\n");
+        SP_LOG("{} [file [file ..]] <query>", SP_FMT_CSTR(argv[0]));
+        SP_LOG("{} [file [file ..]] -- [query [query ..]]", SP_FMT_CSTR(argv[0]));
+        SP_LOG("Query values in SPCL/CCL files. Queries are '='-separated keys.");
         return 1;
     }
 
@@ -185,6 +191,7 @@ int main(int argc, char **argv) {
         return 0;
     }
     if (parsed != 0) {
+        free_cli(&args);
         fprintf(stderr, "Failed to parse CLI arguments\n");
         return 1;
     }
