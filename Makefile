@@ -21,7 +21,7 @@ CFLAGS ?= $(CSTD) $(OPT) $(WARNINGS)
 LDFLAGS ?=
 LDLIBS ?=
 
-LIB_SRCS := $(SRC_DIR)/spclib.c $(SRC_DIR)/parser.c $(SRC_DIR)/model.c $(SRC_DIR)/io.c
+LIB_SRCS := $(SRC_DIR)/parser.c $(SRC_DIR)/model.c $(SRC_DIR)/io.c
 LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIB_DEPS := $(LIB_OBJS:.o=.d)
 

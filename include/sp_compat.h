@@ -1,34 +1,56 @@
-#include "spclib.h"
+#ifndef SP_COMPAT_H
+#define SP_COMPAT_H
+
+#include "sp.h"
 
 #include <ctype.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-void *spc_malloc(size_t n) {
+typedef struct {
+    char *data;
+    size_t len;
+    size_t cap;
+} spc_strbuf;
+
+static inline void *spc_malloc(size_t n) {
     return malloc(n);
 }
 
-void *spc_calloc(size_t n, size_t size) {
+static inline void *spc_calloc(size_t n, size_t size) {
     return calloc(n, size);
 }
 
-void *spc_realloc(void *ptr, size_t n) {
+static inline void *spc_realloc(void *ptr, size_t n) {
     return realloc(ptr, n);
 }
 
-void spc_free(void *ptr) {
+static inline void spc_free(void *ptr) {
     free(ptr);
 }
 
-size_t spc_strlen(const char *s) {
-    return strlen(s);
+static inline size_t spc_strlen(const char *s) {
+    size_t n = 0;
+    while (s[n] != '\0') {
+        ++n;
+    }
+    return n;
 }
 
-int spc_streq(const char *a, const char *b) {
-    return strcmp(a, b) == 0;
+static inline int spc_streq(const char *a, const char *b) {
+    size_t i = 0;
+    while (a[i] != '\0' && b[i] != '\0') {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+        ++i;
+    }
+    return a[i] == '\0' && b[i] == '\0';
 }
 
-int spc_strcaseeq(const char *a, const char *b) {
+static inline int spc_strcaseeq(const char *a, const char *b) {
     while (*a && *b) {
         if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
             return 0;
@@ -39,55 +61,56 @@ int spc_strcaseeq(const char *a, const char *b) {
     return *a == '\0' && *b == '\0';
 }
 
-const char *spc_strchr(const char *s, int c) {
-    return strchr(s, c);
+static inline const char *spc_strchr(const char *s, int c) {
+    char ch = (char)c;
+    while (*s) {
+        if (*s == ch) {
+            return s;
+        }
+        ++s;
+    }
+    return ch == '\0' ? s : NULL;
 }
 
-char *spc_strdup(const char *s) {
-    size_t n = spc_strlen(s);
+static inline char *spc_substr_dup(const char *s, size_t n) {
     char *out = (char *)spc_malloc(n + 1);
     if (!out) {
         return NULL;
     }
-    memcpy(out, s, n + 1);
-    return out;
-}
-
-char *spc_substr_dup(const char *s, size_t n) {
-    char *out = (char *)spc_malloc(n + 1);
-    if (!out) {
-        return NULL;
-    }
-    memcpy(out, s, n);
+    sp_memcpy(out, s, n);
     out[n] = '\0';
     return out;
 }
 
-static int is_blank_char(char c) {
+static inline char *spc_strdup(const char *s) {
+    return spc_substr_dup(s, spc_strlen(s));
+}
+
+static inline int spc_is_blank(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-char *spc_trim_dup(const char *s, size_t n) {
+static inline char *spc_trim_dup(const char *s, size_t n) {
     size_t start = 0;
     size_t end = n;
-    while (start < end && is_blank_char(s[start])) {
+    while (start < end && spc_is_blank(s[start])) {
         ++start;
     }
-    while (end > start && is_blank_char(s[end - 1])) {
+    while (end > start && spc_is_blank(s[end - 1])) {
         --end;
     }
     return spc_substr_dup(s + start, end - start);
 }
 
-char *spc_rtrim_dup(const char *s, size_t n) {
+static inline char *spc_rtrim_dup(const char *s, size_t n) {
     size_t end = n;
-    while (end > 0 && is_blank_char(s[end - 1])) {
+    while (end > 0 && spc_is_blank(s[end - 1])) {
         --end;
     }
     return spc_substr_dup(s, end);
 }
 
-static bool sb_ensure(spc_strbuf *sb, size_t extra) {
+static inline bool spc_sb_ensure(spc_strbuf *sb, size_t extra) {
     if (sb->len + extra + 1 <= sb->cap) {
         return true;
     }
@@ -104,7 +127,7 @@ static bool sb_ensure(spc_strbuf *sb, size_t extra) {
     return true;
 }
 
-bool spc_sb_init(spc_strbuf *sb, size_t initial_cap) {
+static inline bool spc_sb_init(spc_strbuf *sb, size_t initial_cap) {
     if (initial_cap == 0) {
         initial_cap = 64;
     }
@@ -120,15 +143,15 @@ bool spc_sb_init(spc_strbuf *sb, size_t initial_cap) {
     return true;
 }
 
-void spc_sb_free(spc_strbuf *sb) {
-    free(sb->data);
+static inline void spc_sb_free(spc_strbuf *sb) {
+    spc_free(sb->data);
     sb->data = NULL;
     sb->len = 0;
     sb->cap = 0;
 }
 
-bool spc_sb_push_char(spc_strbuf *sb, char c) {
-    if (!sb_ensure(sb, 1)) {
+static inline bool spc_sb_push_char(spc_strbuf *sb, char c) {
+    if (!spc_sb_ensure(sb, 1)) {
         return false;
     }
     sb->data[sb->len++] = c;
@@ -136,18 +159,18 @@ bool spc_sb_push_char(spc_strbuf *sb, char c) {
     return true;
 }
 
-bool spc_sb_push_mem(spc_strbuf *sb, const char *s, size_t n) {
-    if (!sb_ensure(sb, n)) {
+static inline bool spc_sb_push_mem(spc_strbuf *sb, const char *s, size_t n) {
+    if (!spc_sb_ensure(sb, n)) {
         return false;
     }
-    memcpy(sb->data + sb->len, s, n);
+    sp_memcpy(sb->data + sb->len, s, n);
     sb->len += n;
     sb->data[sb->len] = '\0';
     return true;
 }
 
-bool spc_sb_push_repeat(spc_strbuf *sb, char c, size_t n) {
-    if (!sb_ensure(sb, n)) {
+static inline bool spc_sb_push_repeat(spc_strbuf *sb, char c, size_t n) {
+    if (!spc_sb_ensure(sb, n)) {
         return false;
     }
     for (size_t i = 0; i < n; ++i) {
@@ -157,7 +180,7 @@ bool spc_sb_push_repeat(spc_strbuf *sb, char c, size_t n) {
     return true;
 }
 
-char *spc_sb_steal(spc_strbuf *sb) {
+static inline char *spc_sb_steal(spc_strbuf *sb) {
     char *out = sb->data;
     sb->data = NULL;
     sb->len = 0;
@@ -165,7 +188,7 @@ char *spc_sb_steal(spc_strbuf *sb) {
     return out;
 }
 
-char *spc_read_all(FILE *f, char **error) {
+static inline char *spc_read_all(FILE *f, char **error) {
     spc_strbuf sb;
     if (!spc_sb_init(&sb, 4096)) {
         if (error) {
@@ -198,3 +221,5 @@ char *spc_read_all(FILE *f, char **error) {
 
     return spc_sb_steal(&sb);
 }
+
+#endif

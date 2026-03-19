@@ -1,5 +1,5 @@
 #include "spcl.h"
-#include "spclib.h"
+#include "sp_compat.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
