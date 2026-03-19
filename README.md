@@ -1,57 +1,74 @@
-# CCL: Categorical Configuration Language
+# SPCL (C Edition)
 
-Read the language description with key feature highlights in the following tutorial:
+SPCL is a C rewrite of the original CCL project with an extended syntax profile:
 
-- [chshersh: The Most Elegant Configuration Language](https://chshersh.com/blog/2025-01-06-the-most-elegant-configuration-language.html)
+- CCL core: `key = value`, indentation-based multiline values, recursive nested parsing.
+- SPCL extensions: `SKILLS:` block and `PROMPT:` block.
 
-<p align="center">
-  <img alt="CCL Example" src="https://github.com/chshersh/chshersh.github.io/blob/develop/images/ccl/ccl.jpg?raw=true">
-</p>
+## Build
 
-> [!IMPORTANT]
-> `ccl` is developed and maintained in free time
-> by volunteers. The development may continue for decades or may stop
-> tomorrow. You can use
-> [GitHub Sponsorship](https://github.com/sponsors/chshersh) to support
-> the development of this project.
-
-## Features
-
-CCL is just a key-value mapping. Yet, it's powerful enough to support:
-
-1. Key-value mappings (obviously)
-1. Lists
-1. Strings
-1. Dates
-1. Algebraic Data Types
-1. Comments
-1. Sections
-1. Nested records
-
-## Development
-
-Initialise the project when building for the first time:
-
-```
-opam switch create .
+```sh
+make all
 ```
 
-Build the project:
+## Test
 
-```
-dune build
-```
-
-Install dev dependencies:
-
-```
-opam install utop ocamlformat ocaml-lsp-server
+```sh
+make test
 ```
 
-## Implementations in Other Languages
+## Run
 
-### Rust
+```sh
+./build/bin/cclq examples/example.spcl
+./build/bin/cclq examples/example.spcl database=ports
+./build/bin/cclq examples/example.spcl -- skills prompt
+```
 
-- [ccl-rs](https://github.com/hon-gyu/ccl-rs)
+## SPCL Syntax Extension
 
-- [serde_ccl](https://github.com/LechintanTudor/serde_ccl)
+### Skills block
+
+```txt
+SKILLS:
+  - modern-c-makefile
+  - modern-c-dev
+```
+
+Equivalent internal CCL form:
+
+```txt
+skills =
+  = modern-c-makefile
+  = modern-c-dev
+```
+
+### Prompt block
+
+```txt
+PROMPT:
+  Rewrite this project into modern C.
+  Keep strict warning flags.
+```
+
+This is stored as raw string payload under key `prompt`.
+
+## Project Layout
+
+- `include/spcl.h`: public API
+- `src/parser.c`: CCL parser + SPCL block parser
+- `src/model.c`: recursive model, merge, query, pretty printer
+- `src/io.c`: file decoding helper
+- `src/cclq.c`: CLI query tool
+- `tests/test_spcl.c`: minimal regression tests
+- `Makefile`: modern C build/test/sanitize/lint/format workflow
+
+## Design Source
+
+Language design reference:
+
+- https://chshersh.com/blog/2025-01-06-the-most-elegant-configuration-language.html
+
+## 中文文档
+
+- [使用指南](docs/使用指南.md)

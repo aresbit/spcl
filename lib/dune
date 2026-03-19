@@ -1,4 +1,0 @@
-(library
- (name ccl)
- (public_name ccl)
- (libraries angstrom))

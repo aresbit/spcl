@@ -1,3 +1,0 @@
-(test
- (name test)
- (libraries ccl alcotest qcheck qcheck-alcotest test_parser))
