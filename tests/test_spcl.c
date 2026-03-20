@@ -199,6 +199,43 @@ static void test_fixpoint_stress_from_ocaml(void) {
     spcl_node_free(root);
 }
 
+static void test_node_helpers_and_order(void) {
+    const char *cfg =
+        "compose =\n"
+        "  inputs =\n"
+        "    = first\n"
+        "    = second\n";
+
+    char *err = NULL;
+    spcl_node *root = spcl_decode(cfg, &err);
+    assert(root != NULL);
+    assert(err == NULL);
+
+    const spcl_node *compose = spcl_node_get_const(root, "compose");
+    assert(compose != NULL);
+    const spcl_node *inputs = spcl_node_get_const(compose, "inputs");
+    assert(inputs != NULL);
+    const spcl_node *list = spcl_node_get_const(inputs, "");
+    assert(list != NULL);
+    assert(list->head != NULL);
+    assert(strcmp(list->head->key, "first") == 0);
+    assert(list->head->next != NULL);
+    assert(strcmp(list->head->next->key, "second") == 0);
+
+    spcl_node *skill = spcl_node_new();
+    assert(skill != NULL);
+    assert(spcl_node_put_child(root, "skill", skill));
+    assert(spcl_node_set_scalar(skill, "description", "base"));
+    char *description = spcl_node_scalar_dup(spcl_node_get_const(skill, "description"));
+    assert(description != NULL);
+    assert(strcmp(description, "base") == 0);
+    sp_free(description);
+    assert(spcl_node_remove(skill, "description"));
+    assert(spcl_node_get_const(skill, "description") == NULL);
+
+    spcl_node_free(root);
+}
+
 int main(void) {
     test_parser_single_from_ocaml();
     test_parser_multiple_and_nested_from_ocaml();
@@ -206,6 +243,7 @@ int main(void) {
     test_basic();
     test_colon_blocks_not_supported();
     test_fixpoint_stress_from_ocaml();
+    test_node_helpers_and_order();
     puts("all tests passed");
     return 0;
 }

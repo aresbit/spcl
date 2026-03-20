@@ -40,3 +40,28 @@ spcl_node *spcl_decode_file(const char *path, char **error) {
     spc_free(text);
     return node;
 }
+
+bool spcl_write_file(const char *path, const char *text, char **error) {
+    if (error) {
+        *error = NULL;
+    }
+
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        if (error) {
+            *error = spc_strdup("Failed to open file for writing");
+        }
+        return false;
+    }
+
+    size_t len = spc_strlen(text);
+    bool ok = fwrite(text, 1, len, f) == len;
+    if (fclose(f) != 0) {
+        ok = false;
+    }
+
+    if (!ok && error) {
+        *error = spc_strdup("Failed to write file");
+    }
+    return ok;
+}

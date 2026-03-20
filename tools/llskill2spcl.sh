@@ -33,6 +33,25 @@ need_cmd() {
   }
 }
 
+skill_tree_snapshot() {
+  local skill_dir="$1"
+  python3 - "$skill_dir" <<'PY'
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1]).resolve()
+lines = []
+for path in sorted(root.rglob("*")):
+    rel = path.relative_to(root).as_posix()
+    if not rel:
+        continue
+    suffix = "/" if path.is_dir() else ""
+    lines.append(rel + suffix)
+
+print("\n".join(lines))
+PY
+}
+
 skill_md=""
 out_file=""
 
@@ -91,6 +110,8 @@ fi
 
 dsl_doc="docs/SPCL-Skill-Composition-DSL.md"
 template_doc="docs/skill-spcl-template.spcl"
+frontend_doc="docs/skill-markdown-frontend.md"
+skill_dir="$(dirname "$skill_md")"
 
 if [[ ! -f "$dsl_doc" ]]; then
   echo "Missing DSL doc: $dsl_doc" >&2
@@ -102,7 +123,13 @@ if [[ ! -f "$template_doc" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$frontend_doc" ]]; then
+  echo "Missing frontend doc: $frontend_doc" >&2
+  exit 1
+fi
+
 tmp_skill_input="$(mktemp)"
+tmp_skill_tree="$(mktemp)"
 
 awk '
   $0 == "<!-- SPCL:BEGIN -->" { in_block = 1; next }
@@ -114,12 +141,16 @@ if [[ ! -s "$tmp_skill_input" ]]; then
   cp "$skill_md" "$tmp_skill_input"
 fi
 
+skill_tree_snapshot "$skill_dir" >"$tmp_skill_tree"
+
 if [[ "$has_jq" -eq 1 ]]; then
   payload="$(jq -n \
     --arg model "$model" \
     --arg temperature "$temperature" \
     --rawfile skill "$tmp_skill_input" \
+    --rawfile tree "$tmp_skill_tree" \
     --rawfile dsl "$dsl_doc" \
+    --rawfile frontend "$frontend_doc" \
     --rawfile tpl "$template_doc" '
   {
     model: $model,
@@ -127,21 +158,26 @@ if [[ "$has_jq" -eq 1 ]]; then
     messages: [
       {
         role: "system",
-        content: "你是 SPCL 规范转换器。任务是把输入的 SKILL.md 转成可被 SPCL 解释器解析的标准 .spcl 文档。只输出纯文本 SPCL，不要 Markdown，不要解释。"
+        content: "你是 SPCL Frontend 规范转换器。你的职责是把输入的 SKILL.md 与技能目录树无损地重编码为标准 .spcl。你做的是语法转换，不是摘要，不是改写，不是删减。必须尽量保留原始技能内容的全部信息，尤其是长段说明、规则、步骤、示例和限制。输出必须是纯文本 SPCL；只能使用 = 分隔与缩进树；不要 Markdown，不要解释。"
       },
       {
         role: "user",
         content:
+          "请把输入视为 SKILL Markdown Frontend，而不是普通说明文。你必须把 Markdown 标题层级、列表并列关系、目录层级与 sibling 关系一起前端解释成 fixpoint-friendly ADT 配置。\n\n" +
+          "硬约束：不要删除 SKILL.md 中的大段内容。几百行技能描述也要尽量完整保留，只是转换为 SPCL 语法。不要总结，不要压缩，不要只提取要点，不要把整篇内容塞成很短的 description。\n\n" +
+          "如果某些正文无法自然映射为结构化字段，也必须保留为文本节点，而不是删除。\n\n" +
           "请严格遵循以下 DSL 设计与模板，输出一个标准化的 SPCL 文档。\n\n" +
           "=== DSL 设计 ===\n" + $dsl + "\n\n" +
+          "=== Markdown Frontend 解释规则 ===\n" + $frontend + "\n\n" +
           "=== SPCL 模板 ===\n" + $tpl + "\n\n" +
+          "=== 技能目录树 ===\n" + $tree + "\n\n" +
           "=== 待转换 SKILL.md ===\n" + $skill + "\n"
       }
     ]
   }
   ')"
 else
-  payload="$(python3 - "$model" "$temperature" "$tmp_skill_input" "$dsl_doc" "$template_doc" <<'PY'
+  payload="$(python3 - "$model" "$temperature" "$tmp_skill_input" "$tmp_skill_tree" "$dsl_doc" "$frontend_doc" "$template_doc" <<'PY'
 import json
 import pathlib
 import sys
@@ -149,11 +185,15 @@ import sys
 model = sys.argv[1]
 temperature = float(sys.argv[2])
 skill_path = pathlib.Path(sys.argv[3])
-dsl_path = pathlib.Path(sys.argv[4])
-tpl_path = pathlib.Path(sys.argv[5])
+tree_path = pathlib.Path(sys.argv[4])
+dsl_path = pathlib.Path(sys.argv[5])
+frontend_path = pathlib.Path(sys.argv[6])
+tpl_path = pathlib.Path(sys.argv[7])
 
 skill = skill_path.read_text(encoding="utf-8")
+tree = tree_path.read_text(encoding="utf-8")
 dsl = dsl_path.read_text(encoding="utf-8")
+frontend = frontend_path.read_text(encoding="utf-8")
 tpl = tpl_path.read_text(encoding="utf-8")
 
 obj = {
@@ -162,14 +202,19 @@ obj = {
     "messages": [
         {
             "role": "system",
-            "content": "你是 SPCL 规范转换器。任务是把输入的 SKILL.md 转成可被 SPCL 解释器解析的标准 .spcl 文档。只输出纯文本 SPCL，不要 Markdown，不要解释。",
+            "content": "你是 SPCL Frontend 规范转换器。你的职责是把输入的 SKILL.md 与技能目录树无损地重编码为标准 .spcl。你做的是语法转换，不是摘要，不是改写，不是删减。必须尽量保留原始技能内容的全部信息，尤其是长段说明、规则、步骤、示例和限制。输出必须是纯文本 SPCL；只能使用 = 分隔与缩进树；不要 Markdown，不要解释。",
         },
         {
             "role": "user",
             "content": (
-                "请严格遵循以下 DSL 设计与模板，输出一个标准化的 SPCL 文档。\n\n"
+                "请把输入视为 SKILL Markdown Frontend，而不是普通说明文。你必须把 Markdown 标题层级、列表并列关系、目录层级与 sibling 关系一起前端解释成 fixpoint-friendly ADT 配置。\n\n"
+                + "硬约束：不要删除 SKILL.md 中的大段内容。几百行技能描述也要尽量完整保留，只是转换为 SPCL 语法。不要总结，不要压缩，不要只提取要点，不要把整篇内容塞成很短的 description。\n\n"
+                + "如果某些正文无法自然映射为结构化字段，也必须保留为文本节点，而不是删除。\n\n"
+                + "请严格遵循以下 DSL 设计与模板，输出一个标准化的 SPCL 文档。\n\n"
                 + "=== DSL 设计 ===\n" + dsl + "\n\n"
+                + "=== Markdown Frontend 解释规则 ===\n" + frontend + "\n\n"
                 + "=== SPCL 模板 ===\n" + tpl + "\n\n"
+                + "=== 技能目录树 ===\n" + tree + "\n\n"
                 + "=== 待转换 SKILL.md ===\n" + skill + "\n"
             ),
         },
@@ -183,7 +228,7 @@ fi
 
 tmp_resp="$(mktemp)"
 cleanup() {
-  rm -f "$tmp_resp" "$tmp_skill_input"
+  rm -f "$tmp_resp" "$tmp_skill_input" "$tmp_skill_tree"
 }
 trap cleanup EXIT
 

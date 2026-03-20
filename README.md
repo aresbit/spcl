@@ -67,20 +67,16 @@ bash tools/llskill2spcl.sh \
 
 ## 组合流水线（parsespcl）
 
-端到端执行：复制技能 -> LLM 返回 `.md`（SPCL内容）-> `cclq` 规范化合并：
+端到端执行：规范化 `SKILL.md -> SKILL.spcl` -> 生成 `compose manifest` -> 调解释器执行组合：
 
 ```sh
 bash tools/parsespcl.sh skill1dir skill2dir
 ```
 
-默认输出在 `./trick/<skill1>-and-then-<skill2>/`，包含：
-- `manifest.md`
-- `normalized.md`
-- `spcl-md/*.md`
-- `skills/*`
+默认产物目录由解释器生成，脚本本身只保留最终输出目录，不保留中间规范化目录。
 
-无 API key 测试模式：
-
-```sh
-bash tools/parsespcl.sh --mock-llm skill1dir
-```
+说明：
+- `parsespcl.sh` 不在 Bash 里实现组合语义
+- `skill.description` 的 append、`title` 追加、`reference/**/*.spcl` 合并，都由解释器处理
+- 当前脚本会为每个输入技能生成临时 `SKILL.spcl`，并生成临时 `manifest.spcl` 后调用解释器
+- 若你的解释器尚未实现 `compose` 子命令，脚本会直接报错退出

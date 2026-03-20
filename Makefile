@@ -38,11 +38,12 @@ TEST_DEPS := $(TEST_OBJS:.o=.d)
 
 LIB_TARGET := $(LIB_DIR)/lib$(PROJECT).a
 CLI_TARGET := $(BIN_DIR)/cclq
+SPCL_TARGET := $(BIN_DIR)/spcl
 TEST_TARGET := $(BIN_DIR)/test_spcl
 
 .PHONY: all clean test run sanitize lint format compdb
 
-all: $(CLI_TARGET)
+all: $(CLI_TARGET) $(SPCL_TARGET)
 
 $(OBJ_DIR) $(BIN_DIR) $(LIB_DIR):
 	$(MKDIR_P) $@
@@ -59,14 +60,17 @@ $(LIB_TARGET): $(LIB_OBJS) | $(LIB_DIR)
 $(CLI_TARGET): $(CLI_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
+$(SPCL_TARGET): $(CLI_OBJS) $(LIB_TARGET) | $(BIN_DIR)
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
 $(TEST_TARGET): $(TEST_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 test: $(TEST_TARGET)
 	$(TEST_TARGET)
 
-run: $(CLI_TARGET)
-	$(CLI_TARGET) --help
+run: $(SPCL_TARGET)
+	$(SPCL_TARGET) --help
 
 sanitize: CFLAGS := $(CSTD) -O1 -g3 -fno-omit-frame-pointer $(WARNINGS) -fsanitize=address,undefined
 sanitize: LDFLAGS += -fsanitize=address,undefined

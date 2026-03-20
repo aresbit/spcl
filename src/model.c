@@ -30,7 +30,7 @@ static const spcl_pair *pair_find_const(const spcl_node *node, const char *key) 
     return NULL;
 }
 
-static bool node_set_child(spcl_node *node, const char *key, spcl_node *child) {
+bool spcl_node_put_child(spcl_node *node, const char *key, spcl_node *child) {
     spcl_pair *p = pair_find(node, key);
     if (p) {
         spcl_node_free(p->value);
@@ -48,9 +48,28 @@ static bool node_set_child(spcl_node *node, const char *key, spcl_node *child) {
         return false;
     }
     np->value = child;
-    np->next = node->head;
-    node->head = np;
+    np->next = NULL;
+    if (!node->head) {
+        node->head = np;
+        return true;
+    }
+
+    spcl_pair *tail = node->head;
+    while (tail->next) {
+        tail = tail->next;
+    }
+    tail->next = np;
     return true;
+}
+
+spcl_node *spcl_node_get(spcl_node *node, const char *key) {
+    spcl_pair *pair = pair_find(node, key);
+    return pair ? pair->value : NULL;
+}
+
+const spcl_node *spcl_node_get_const(const spcl_node *node, const char *key) {
+    const spcl_pair *pair = pair_find_const(node, key);
+    return pair ? pair->value : NULL;
 }
 
 void spcl_node_free(spcl_node *node) {
@@ -78,7 +97,7 @@ spcl_node *spcl_node_clone(const spcl_node *src) {
     }
     for (const spcl_pair *p = src->head; p != NULL; p = p->next) {
         spcl_node *child = spcl_node_clone(p->value);
-        if (!child || !node_set_child(dst, p->key, child)) {
+        if (!child || !spcl_node_put_child(dst, p->key, child)) {
             spcl_node_free(child);
             spcl_node_free(dst);
             return NULL;
@@ -95,7 +114,7 @@ void spcl_node_merge_into(spcl_node *dst, const spcl_node *src) {
         spcl_pair *existing = pair_find(dst, p->key);
         if (!existing) {
             spcl_node *child = spcl_node_clone(p->value);
-            if (!child || !node_set_child(dst, p->key, child)) {
+            if (!child || !spcl_node_put_child(dst, p->key, child)) {
                 spcl_node_free(child);
                 continue;
             }
@@ -108,7 +127,7 @@ void spcl_node_merge_into(spcl_node *dst, const spcl_node *src) {
 static spcl_node *singleton_value(const char *value) {
     spcl_node *root = spcl_node_new();
     spcl_node *empty = spcl_node_new();
-    if (!root || !empty || !node_set_child(root, value, empty)) {
+    if (!root || !empty || !spcl_node_put_child(root, value, empty)) {
         spcl_node_free(root);
         spcl_node_free(empty);
         return NULL;
@@ -146,7 +165,7 @@ static spcl_node *build_from_kvs(const spcl_kv_list *kvs) {
 
         spcl_pair *slot = pair_find(root, kv->key);
         if (!slot) {
-            if (!node_set_child(root, kv->key, child)) {
+            if (!spcl_node_put_child(root, kv->key, child)) {
                 spcl_node_free(child);
                 spcl_node_free(root);
                 return NULL;
@@ -193,6 +212,54 @@ spcl_node *spcl_query(const spcl_node *root, const char **keys, size_t nkeys) {
         cur = p->value;
     }
     return (spcl_node *)cur;
+}
+
+bool spcl_node_set_scalar(spcl_node *node, const char *key, const char *value) {
+    spcl_node *scalar = singleton_value(value);
+    if (!scalar) {
+        return false;
+    }
+    if (!spcl_node_put_child(node, key, scalar)) {
+        spcl_node_free(scalar);
+        return false;
+    }
+    return true;
+}
+
+char *spcl_node_scalar_dup(const spcl_node *node) {
+    if (!node || !node->head || node->head->next != NULL) {
+        return NULL;
+    }
+    if (node->head->value && node->head->value->head != NULL) {
+        return NULL;
+    }
+    return spc_strdup(node->head->key);
+}
+
+bool spcl_node_remove(spcl_node *node, const char *key) {
+    if (!node) {
+        return false;
+    }
+
+    spcl_pair *prev = NULL;
+    for (spcl_pair *pair = node->head; pair != NULL; pair = pair->next) {
+        if (!spc_streq(pair->key, key)) {
+            prev = pair;
+            continue;
+        }
+
+        if (prev) {
+            prev->next = pair->next;
+        } else {
+            node->head = pair->next;
+        }
+        spc_free(pair->key);
+        spcl_node_free(pair->value);
+        spc_free(pair);
+        return true;
+    }
+
+    return false;
 }
 
 static void pretty_rec(pretty_ctx *ctx, const spcl_node *node, size_t indent) {
