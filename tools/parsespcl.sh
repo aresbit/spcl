@@ -8,8 +8,8 @@ Usage:
 
 Pipeline:
   1) Copy source skills to working directory
-  2) Convert each SKILL.md to <skill>.spcl via LLM (or mock mode)
-  3) Merge generated .spcl using cclq and output a normalized combo bundle
+  2) Convert each SKILL.md to <skill>.md (SPCL content) via LLM (or mock mode)
+  3) Merge generated SPCL-content .md files using cclq and output a normalized combo bundle
 
 Options:
   --source-dir DIR      Source skills directory. Default: .claude/skills
@@ -116,7 +116,7 @@ mkdir -p "$out_root"
 combo_name="$(printf '%s-and-then-' "${skills[@]}")"
 combo_name="${combo_name%-and-then-}"
 bundle_dir="$out_root/$combo_name"
-mkdir -p "$bundle_dir/spcl" "$bundle_dir/skills"
+mkdir -p "$bundle_dir/spcl-md" "$bundle_dir/skills"
 
 spcl_files=()
 for skill in "${skills[@]}"; do
@@ -125,7 +125,7 @@ for skill in "${skills[@]}"; do
     echo "SKILL.md not found in work dir: $skill_md" >&2
     exit 1
   fi
-  out_spcl="$bundle_dir/spcl/${skill}.spcl"
+  out_spcl="$bundle_dir/spcl-md/${skill}.md"
   if [[ "$mock_llm" -eq 1 ]]; then
     cat >"$out_spcl" <<EOF
 meta =
@@ -149,9 +149,9 @@ EOF
   fi
 done
 
-"./build/bin/cclq" "${spcl_files[@]}" -- >"$bundle_dir/normalized.spcl"
+"./build/bin/cclq" "${spcl_files[@]}" -- >"$bundle_dir/normalized.md"
 
-cat >"$bundle_dir/manifest.spcl" <<EOF
+cat >"$bundle_dir/manifest.md" <<EOF
 meta =
   name = $combo_name
   version = 1
@@ -164,9 +164,9 @@ $(for s in "${skills[@]}"; do printf '    = %s\n' "$s"; done)
 
 bundle =
   root = $bundle_dir
-  normalized = normalized.spcl
+  normalized = normalized.md
 EOF
 
 echo "Bundle generated: $bundle_dir"
-echo "  - manifest:   $bundle_dir/manifest.spcl"
-echo "  - normalized: $bundle_dir/normalized.spcl"
+echo "  - manifest:   $bundle_dir/manifest.md"
+echo "  - normalized: $bundle_dir/normalized.md"

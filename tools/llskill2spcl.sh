@@ -22,7 +22,7 @@ Optional env:
 Examples:
   export DEEPSEEK_API_KEY="..."
   bash tools/llskill2spcl.sh --skill ./skills/my-skill/SKILL.md
-  bash tools/llskill2spcl.sh --skill ./skills/my-skill/SKILL.md --out /tmp/my-skill.spcl
+  bash tools/llskill2spcl.sh --skill ./skills/my-skill/SKILL.md --out /tmp/my-skill.md
 EOF
 }
 
@@ -90,7 +90,7 @@ temperature="${LLM_TEMPERATURE:-0}"
 if [[ -z "$out_file" ]]; then
   dir_name="$(dirname "$skill_md")"
   skill_name="$(basename "$dir_name")"
-  out_file="$dir_name/${skill_name}.spcl"
+  out_file="$dir_name/${skill_name}.md"
 fi
 
 dsl_doc="docs/SPCL-Skill-Composition-DSL.md"

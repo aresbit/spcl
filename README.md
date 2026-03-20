@@ -48,7 +48,7 @@ Language design reference:
 
 ## SKILL.md 转 SPCL
 
-将修改后的 `SKILL.md` 发送给 LLM，返回标准 `.spcl`：
+将修改后的 `SKILL.md` 发送给 LLM，返回 SPCL 内容（文件后缀使用 `.md`）：
 
 ```sh
 export DEEPSEEK_API_KEY="YOUR_KEY"
@@ -57,26 +57,26 @@ bash tools/llskill2spcl.sh --skill ./skills/<skill_name>/SKILL.md
 
 默认使用 `LLM_MODEL=deepseek-chat`。密钥支持 `DEEPSEEK_API_KEY`（或通用 `LLM_API_KEY`）；地址支持 `DEEPSEEK_API_URL`（或通用 `LLM_API_URL`），默认是 `https://api.deepseek.com/chat/completions`。
 
-输出默认写入同目录：`<skill_name>.spcl`。也可指定输出：
+输出默认写入同目录：`<skill_name>.md`。也可指定输出：
 
 ```sh
 bash tools/llskill2spcl.sh \
   --skill ./skills/<skill_name>/SKILL.md \
-  --out /tmp/<skill_name>.spcl
+  --out /tmp/<skill_name>.md
 ```
 
 ## 组合流水线（parsespcl）
 
-端到端执行：复制技能 -> LLM 返回 `.spcl` -> `cclq` 规范化合并：
+端到端执行：复制技能 -> LLM 返回 `.md`（SPCL内容）-> `cclq` 规范化合并：
 
 ```sh
 bash tools/parsespcl.sh skill1dir skill2dir
 ```
 
 默认输出在 `./trick/<skill1>-and-then-<skill2>/`，包含：
-- `manifest.spcl`
-- `normalized.spcl`
-- `spcl/*.spcl`
+- `manifest.md`
+- `normalized.md`
+- `spcl-md/*.md`
 - `skills/*`
 
 无 API key 测试模式：
