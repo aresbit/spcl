@@ -1,6 +1,9 @@
 PROJECT := spcl
 CC ?= cc
-AR := llvm-ar
+ifeq ($(origin AR), default)
+AR := $(or $(shell command -v llvm-ar 2>/dev/null),$(shell command -v gcc-ar 2>/dev/null),$(shell command -v ar 2>/dev/null),ar)
+endif
+ARFLAGS ?= rcs
 RM ?= rm -f
 MKDIR_P ?= mkdir -p
 
@@ -51,7 +54,7 @@ $(OBJ_DIR)/tests_%.o: $(TEST_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(LIB_TARGET): $(LIB_OBJS) | $(LIB_DIR)
-	$(AR) rcs $@ $^
+	$(AR) $(ARFLAGS) $@ $^
 
 $(CLI_TARGET): $(CLI_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
