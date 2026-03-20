@@ -1,0 +1,25 @@
+meta =
+  name = skill-template
+  version = 1
+
+skill =
+  name = <skill-name>
+  title = <human-readable-title>
+  description =
+    <what-this-skill-does>
+  entry = SKILL.spcl
+  refs =
+    = reference/*.spcl
+
+compose =
+  op = and-then
+  inputs =
+    = <skill-a>
+    = <skill-b>
+  output = <skill-a>-and-then-<skill-b>
+
+resolve =
+  merge = deep
+  conflict = right-bias
+  fixpoint = true
+  max_iter = 64
