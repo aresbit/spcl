@@ -66,11 +66,7 @@ fi
 
 need_cmd curl
 has_jq=0
-if command -v jq >/dev/null 2>&1; then
-  has_jq=1
-else
-  need_cmd python3
-fi
+need_cmd python3
 
 if [[ ! -f "$skill_md" ]]; then
   echo "SKILL.md not found: $skill_md" >&2

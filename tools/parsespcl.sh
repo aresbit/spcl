@@ -12,7 +12,7 @@ Pipeline:
   3) Merge generated SPCL-content .md files using cclq and output a normalized combo bundle
 
 Options:
-  --source-dir DIR      Source skills directory. Default: .claude/skills
+  --source-dir DIR      Source skills directory. Default: ~/.claude/skills
   --work-dir DIR        Working skills directory. Default: ./skills
   --out-dir DIR         Bundle output root. Default: ./trick
   --refresh-copy        Re-copy source directory into work dir before run
@@ -22,7 +22,7 @@ Options:
 Examples:
   bash tools/parsespcl.sh skill1dir
   bash tools/parsespcl.sh skill1dir skill2dir
-  bash tools/parsespcl.sh --source-dir /path/to/.claude/skills --refresh-copy skill1dir
+  bash tools/parsespcl.sh --source-dir ~/.claude/skills --refresh-copy skill1dir
 EOF
 }
 
@@ -33,7 +33,7 @@ need_cmd() {
   }
 }
 
-source_dir=".claude/skills"
+source_dir="$HOME/.claude/skills"
 work_dir="./skills"
 out_root="./trick"
 refresh_copy=0
