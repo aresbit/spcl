@@ -33,6 +33,41 @@ need_cmd() {
   }
 }
 
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+find_support_file() {
+  local rel_path="$1"
+  local candidate=""
+
+  if [[ -n "${SPCL_SHARE_DIR:-}" ]]; then
+    candidate="$SPCL_SHARE_DIR/$rel_path"
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  candidate="$script_dir/../share/spcl/$rel_path"
+  if [[ -f "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  candidate="$script_dir/../docs/$(basename "$rel_path")"
+  if [[ -f "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  candidate="$(pwd)/$rel_path"
+  if [[ -f "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  return 1
+}
+
 skill_tree_snapshot() {
   local skill_dir="$1"
   python3 - "$skill_dir" <<'PY'
@@ -108,9 +143,9 @@ if [[ -z "$out_file" ]]; then
   out_file="$dir_name/${skill_name}.md"
 fi
 
-dsl_doc="docs/SPCL-Skill-Composition-DSL.md"
-template_doc="docs/skill-spcl-template.spcl"
-frontend_doc="docs/skill-markdown-frontend.md"
+dsl_doc="$(find_support_file "docs/SPCL-Skill-Composition-DSL.md" || true)"
+template_doc="$(find_support_file "docs/skill-spcl-template.spcl" || true)"
+frontend_doc="$(find_support_file "docs/skill-markdown-frontend.md" || true)"
 skill_dir="$(dirname "$skill_md")"
 
 if [[ ! -f "$dsl_doc" ]]; then

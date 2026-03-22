@@ -43,6 +43,37 @@ need_cmd() {
   }
 }
 
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+resolve_llskill2spcl() {
+  if [[ -n "${SPCL_LLSKILL2SPCL:-}" ]]; then
+    printf '%s\n' "$SPCL_LLSKILL2SPCL"
+    return 0
+  fi
+
+  if [[ -x "$script_dir/llskill2spcl" ]]; then
+    printf '%s\n' "$script_dir/llskill2spcl"
+    return 0
+  fi
+
+  if command -v llskill2spcl >/dev/null 2>&1; then
+    command -v llskill2spcl
+    return 0
+  fi
+
+  if [[ -f "$script_dir/llskill2spcl.sh" ]]; then
+    printf '%s\n' "$script_dir/llskill2spcl.sh"
+    return 0
+  fi
+
+  if [[ -f "$(pwd)/tools/llskill2spcl.sh" ]]; then
+    printf '%s\n' "$(pwd)/tools/llskill2spcl.sh"
+    return 0
+  fi
+
+  return 1
+}
+
 source_dir="$HOME/.claude/skills"
 work_dir="./skills"
 out_dir="./trick"
@@ -103,6 +134,12 @@ fi
 need_cmd bash
 need_cmd find
 need_cmd sort
+llskill2spcl_cmd="$(resolve_llskill2spcl || true)"
+
+if [[ -z "$llskill2spcl_cmd" ]]; then
+  echo "Unable to locate llskill2spcl helper script" >&2
+  exit 1
+fi
 
 if [[ "$refresh_copy" -eq 1 ]]; then
   if [[ ! -d "$source_dir" ]]; then
@@ -220,7 +257,7 @@ skill =
     = reference/*.spcl
 EOF
   else
-    bash tools/llskill2spcl.sh --skill "$skill_md" --out "$skill_spcl"
+    bash "$llskill2spcl_cmd" --skill "$skill_md" --out "$skill_spcl"
   fi
 done
 
@@ -258,7 +295,7 @@ if [[ ! -f "$interpreter_out/SKILL.spcl" ]]; then
   exit 1
 fi
 
-cp "$interpreter_out/SKILL.spcl" "$combo_dir/SKILL.md"
+cp "$interpreter_out/SKILL.spcl" "$combo_dir/SKILL.spcl"
 
 for i in "${!skills[@]}"; do
   merge_skill_reference "${resolved_skill_dirs[$i]}"

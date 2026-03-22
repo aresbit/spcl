@@ -4,8 +4,18 @@ ifeq ($(origin AR), default)
 AR := $(or $(shell command -v llvm-ar 2>/dev/null),$(shell command -v gcc-ar 2>/dev/null),$(shell command -v ar 2>/dev/null),ar)
 endif
 ARFLAGS ?= rcs
+INSTALL ?= install
 RM ?= rm -f
 MKDIR_P ?= mkdir -p
+
+PREFIX ?= /usr/local
+EXEC_PREFIX ?= $(PREFIX)
+BINDIR ?= $(EXEC_PREFIX)/bin
+LIBINSTALLDIR ?= $(EXEC_PREFIX)/lib
+INCLUDEDIR ?= $(PREFIX)/include
+DATADIR ?= $(PREFIX)/share
+PKGDATADIR ?= $(DATADIR)/$(PROJECT)
+DESTDIR ?=
 
 BUILD_DIR := build
 OBJ_DIR := $(BUILD_DIR)/obj
@@ -40,8 +50,12 @@ LIB_TARGET := $(LIB_DIR)/lib$(PROJECT).a
 CLI_TARGET := $(BIN_DIR)/cclq
 SPCL_TARGET := $(BIN_DIR)/spcl
 TEST_TARGET := $(BIN_DIR)/test_spcl
+PUBLIC_HEADERS := $(INC_DIR)/spcl.h $(INC_DIR)/sp_compat.h $(INC_DIR)/sp.h
+INSTALL_SCRIPTS := tools/parsespcl.sh tools/llskill2spcl.sh
+INSTALL_SCRIPT_NAMES := parsespcl llskill2spcl
+DOC_DATA_FILES := docs/SPCL-Skill-Composition-DSL.md docs/skill-spcl-template.spcl docs/skill-markdown-frontend.md
 
-.PHONY: all clean test run sanitize lint format compdb
+.PHONY: all clean test run sanitize lint format compdb install uninstall
 
 all: $(CLI_TARGET) $(SPCL_TARGET)
 
@@ -87,6 +101,29 @@ format:
 compdb:
 	@command -v compiledb >/dev/null 2>&1 || { echo "compiledb not found"; exit 0; }
 	compiledb make -B all test
+
+install: all $(LIB_TARGET)
+	$(MKDIR_P) $(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBINSTALLDIR) $(DESTDIR)$(INCLUDEDIR) $(DESTDIR)$(PKGDATADIR)/docs
+	$(INSTALL) -m 755 $(SPCL_TARGET) $(DESTDIR)$(BINDIR)/spcl
+	$(INSTALL) -m 755 $(CLI_TARGET) $(DESTDIR)$(BINDIR)/cclq
+	$(INSTALL) -m 755 tools/parsespcl.sh $(DESTDIR)$(BINDIR)/parsespcl
+	$(INSTALL) -m 755 tools/llskill2spcl.sh $(DESTDIR)$(BINDIR)/llskill2spcl
+	$(INSTALL) -m 644 $(LIB_TARGET) $(DESTDIR)$(LIBINSTALLDIR)/lib$(PROJECT).a
+	$(INSTALL) -m 644 $(PUBLIC_HEADERS) $(DESTDIR)$(INCLUDEDIR)/
+	$(INSTALL) -m 644 $(DOC_DATA_FILES) $(DESTDIR)$(PKGDATADIR)/docs/
+
+uninstall:
+	$(RM) $(DESTDIR)$(BINDIR)/spcl
+	$(RM) $(DESTDIR)$(BINDIR)/cclq
+	$(RM) $(DESTDIR)$(BINDIR)/parsespcl
+	$(RM) $(DESTDIR)$(BINDIR)/llskill2spcl
+	$(RM) $(DESTDIR)$(LIBINSTALLDIR)/lib$(PROJECT).a
+	$(RM) $(DESTDIR)$(INCLUDEDIR)/spcl.h
+	$(RM) $(DESTDIR)$(INCLUDEDIR)/sp_compat.h
+	$(RM) $(DESTDIR)$(INCLUDEDIR)/sp.h
+	$(RM) $(DESTDIR)$(PKGDATADIR)/docs/SPCL-Skill-Composition-DSL.md
+	$(RM) $(DESTDIR)$(PKGDATADIR)/docs/skill-spcl-template.spcl
+	$(RM) $(DESTDIR)$(PKGDATADIR)/docs/skill-markdown-frontend.md
 
 clean:
 	$(RM) -r $(BUILD_DIR)
