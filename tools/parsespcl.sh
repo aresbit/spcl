@@ -24,7 +24,7 @@ Options:
   --source-dir DIR      Fallback source skills directory. Default: ~/.claude/skills
   --work-dir DIR        Preferred local skills directory. Default: ./skills
   --out-dir DIR         Final bundle root. Default: ./trick
-  --interpreter PATH    Interpreter executable path. Default: ./build/bin/spcl
+  --interpreter PATH    Interpreter executable path. Default: auto-detect (installed spcl, PATH, or ./build/bin/spcl)
   --refresh-copy        Re-copy requested skills from source dir into work dir before run
   --mock-llm            Skip API call and generate deterministic mock SKILL.spcl
   -h, --help            Show help
@@ -74,10 +74,34 @@ resolve_llskill2spcl() {
   return 1
 }
 
+resolve_interpreter() {
+  if [[ -n "${SPCL_INTERPRETER:-}" ]]; then
+    printf '%s\n' "$SPCL_INTERPRETER"
+    return 0
+  fi
+
+  if [[ -x "$script_dir/spcl" ]]; then
+    printf '%s\n' "$script_dir/spcl"
+    return 0
+  fi
+
+  if command -v spcl >/dev/null 2>&1; then
+    command -v spcl
+    return 0
+  fi
+
+  if [[ -x "$(pwd)/build/bin/spcl" ]]; then
+    printf '%s\n' "$(pwd)/build/bin/spcl"
+    return 0
+  fi
+
+  return 1
+}
+
 source_dir="$HOME/.claude/skills"
 work_dir="./skills"
 out_dir="./trick"
-interpreter="./build/bin/spcl"
+interpreter=""
 refresh_copy=0
 mock_llm=0
 
@@ -136,8 +160,19 @@ need_cmd find
 need_cmd sort
 llskill2spcl_cmd="$(resolve_llskill2spcl || true)"
 
+if [[ -z "$interpreter" ]]; then
+  interpreter="$(resolve_interpreter || true)"
+fi
+
 if [[ -z "$llskill2spcl_cmd" ]]; then
   echo "Unable to locate llskill2spcl helper script" >&2
+  exit 1
+fi
+
+if [[ -z "$interpreter" ]]; then
+  echo "Unable to locate spcl interpreter" >&2
+  echo "Looked for: \$SPCL_INTERPRETER, sibling spcl next to parsespcl, spcl in PATH, and ./build/bin/spcl" >&2
+  echo "Expected an interpreter command that supports: compose <manifest> --skills <dir> --out <dir>" >&2
   exit 1
 fi
 
