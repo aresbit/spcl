@@ -52,7 +52,7 @@ SPCL_TARGET := $(BIN_DIR)/spcl
 TEST_TARGET := $(BIN_DIR)/test_spcl
 PUBLIC_HEADERS := $(INC_DIR)/spcl.h $(INC_DIR)/sp_compat.h $(INC_DIR)/sp.h
 INSTALL_SCRIPTS := tools/parsespcl.sh tools/llskill2spcl.sh
-INSTALL_SCRIPT_NAMES := parsespcl llskill2spcl
+INSTALL_SCRIPT_NAMES := werk llskill2spcl
 DOC_DATA_FILES := docs/SPCL-Skill-Composition-DSL.md docs/skill-spcl-template.spcl docs/skill-markdown-frontend.md
 
 .PHONY: all clean test run sanitize lint format compdb install uninstall
@@ -106,7 +106,7 @@ install: all $(LIB_TARGET)
 	$(MKDIR_P) $(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBINSTALLDIR) $(DESTDIR)$(INCLUDEDIR) $(DESTDIR)$(PKGDATADIR)/docs
 	$(INSTALL) -m 755 $(SPCL_TARGET) $(DESTDIR)$(BINDIR)/spcl
 	$(INSTALL) -m 755 $(CLI_TARGET) $(DESTDIR)$(BINDIR)/cclq
-	$(INSTALL) -m 755 tools/parsespcl.sh $(DESTDIR)$(BINDIR)/parsespcl
+	$(INSTALL) -m 755 tools/parsespcl.sh $(DESTDIR)$(BINDIR)/werk
 	$(INSTALL) -m 755 tools/llskill2spcl.sh $(DESTDIR)$(BINDIR)/llskill2spcl
 	$(INSTALL) -m 644 $(LIB_TARGET) $(DESTDIR)$(LIBINSTALLDIR)/lib$(PROJECT).a
 	$(INSTALL) -m 644 $(PUBLIC_HEADERS) $(DESTDIR)$(INCLUDEDIR)/
@@ -115,7 +115,7 @@ install: all $(LIB_TARGET)
 uninstall:
 	$(RM) $(DESTDIR)$(BINDIR)/spcl
 	$(RM) $(DESTDIR)$(BINDIR)/cclq
-	$(RM) $(DESTDIR)$(BINDIR)/parsespcl
+	$(RM) $(DESTDIR)$(BINDIR)/werk
 	$(RM) $(DESTDIR)$(BINDIR)/llskill2spcl
 	$(RM) $(DESTDIR)$(LIBINSTALLDIR)/lib$(PROJECT).a
 	$(RM) $(DESTDIR)$(INCLUDEDIR)/spcl.h

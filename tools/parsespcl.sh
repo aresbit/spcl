@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  bash tools/parsespcl.sh [OPTIONS] SKILL_DIR [SKILL_DIR ...]
+  werk [OPTIONS] SKILL_DIR [SKILL_DIR ...]
 
 Behavior:
   1) Resolve input skills from work/source directories
@@ -30,9 +30,9 @@ Options:
   -h, --help            Show help
 
 Examples:
-  bash tools/parsespcl.sh modern-c-makefile write-skill
-  bash tools/parsespcl.sh --mock-llm modern-c-makefile
-  bash tools/parsespcl.sh --interpreter ./build/bin/spcl modern-c-makefile write-skill
+  werk modern-c-makefile write-skill
+  werk --mock-llm modern-c-makefile
+  werk --interpreter ./build/bin/spcl modern-c-makefile write-skill
 EOF
 }
 
@@ -56,13 +56,13 @@ resolve_llskill2spcl() {
     return 0
   fi
 
-  if command -v llskill2spcl >/dev/null 2>&1; then
-    command -v llskill2spcl
+  if [[ -f "$script_dir/llskill2spcl.sh" ]]; then
+    printf '%s\n' "$script_dir/llskill2spcl.sh"
     return 0
   fi
 
-  if [[ -f "$script_dir/llskill2spcl.sh" ]]; then
-    printf '%s\n' "$script_dir/llskill2spcl.sh"
+  if command -v llskill2spcl >/dev/null 2>&1; then
+    command -v llskill2spcl
     return 0
   fi
 
@@ -171,7 +171,7 @@ fi
 
 if [[ -z "$interpreter" ]]; then
   echo "Unable to locate spcl interpreter" >&2
-  echo "Looked for: \$SPCL_INTERPRETER, sibling spcl next to parsespcl, spcl in PATH, and ./build/bin/spcl" >&2
+  echo "Looked for: \$SPCL_INTERPRETER, sibling spcl next to werk, spcl in PATH, and ./build/bin/spcl" >&2
   echo "Expected an interpreter command that supports: compose <manifest> --skills <dir> --out <dir>" >&2
   exit 1
 fi
@@ -235,6 +235,15 @@ copy_into_reference() {
   cp "$src_file" "$dest_path"
 }
 
+copy_into_combo_root() {
+  local src_file="$1"
+  local rel_path="$2"
+  local dest_path="$combo_dir/$rel_path"
+
+  mkdir -p "$(dirname "$dest_path")"
+  cp "$src_file" "$dest_path"
+}
+
 merge_skill_reference() {
   local skill_dir="$1"
   local ref_dir=""
@@ -255,8 +264,113 @@ merge_skill_reference() {
 
   while IFS= read -r path; do
     local rel_path="${path#"$skill_dir"/}"
-    copy_into_reference "$path" "$rel_path"
+
+    case "$rel_path" in
+      script/*|scripts/*)
+        copy_into_combo_root "$path" "$rel_path"
+        ;;
+      *)
+        copy_into_reference "$path" "$rel_path"
+        ;;
+    esac
   done < <(find "$skill_dir" -type f ! -name 'SKILL.md' ! -name 'SKILL.spcl' | sort)
+}
+
+extract_skill_summary() {
+  local skill_md="$1"
+
+  python3 - "$skill_md" <<'PY'
+import pathlib
+import re
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+
+frontmatter = ""
+if text.startswith("---\n"):
+    parts = text.split("\n---\n", 1)
+    if len(parts) == 2:
+        frontmatter = parts[0][4:]
+        text = parts[1]
+
+desc_lines = []
+in_desc = False
+for line in frontmatter.splitlines():
+    if re.match(r"^description:\s*\|?\s*$", line):
+        in_desc = True
+        continue
+    if in_desc:
+        if line.startswith("  "):
+            desc_lines.append(line[2:])
+            continue
+        break
+
+if desc_lines:
+    print("\n".join(desc_lines).strip())
+    raise SystemExit
+
+match = re.search(r"^\*\*Description:\*\*\s*(.+(?:\n(?!\n|#|##|\*\*Name:|\*\*Description:).+)*)", text, re.M)
+if match:
+    print(match.group(1).strip())
+    raise SystemExit
+
+for para in re.split(r"\n\s*\n", text):
+    stripped = para.strip()
+    if not stripped:
+        continue
+    if stripped.startswith("#"):
+        continue
+    print(stripped)
+    break
+PY
+}
+
+normalize_embedded_spcl() {
+  local spcl_file="$1"
+
+  python3 - "$spcl_file" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text = re.sub(r"(^[ \t]*entry[ \t]*=\n)([ \t]*)SKILL\.spcl[ \t]*=$", r"\1\2SKILL.md =", text, count=1, flags=re.M)
+print(text, end="")
+PY
+}
+
+write_combo_skill_md() {
+  local out_file="$1"
+  local spcl_file="$2"
+  shift 2
+  local skill_dirs=("$@")
+  local i=0
+
+  {
+    printf '# %s\n\n' "$combo_name"
+    printf '组合技能，按顺序串联以下能力：\n\n'
+
+    for skill_dir in "${skill_dirs[@]}"; do
+      local skill_name="${skills[$i]}"
+      local skill_md="$skill_dir/SKILL.md"
+      local summary=""
+
+      summary="$(extract_skill_summary "$skill_md")"
+      printf -- '- `%s`' "$skill_name"
+      if [[ -n "$summary" ]]; then
+        printf ': %s' "$summary"
+      fi
+      printf '\n'
+
+      i=$((i + 1))
+    done
+
+    printf '\n<!-- SPCL:BEGIN -->\n'
+    normalize_embedded_spcl "$spcl_file"
+    printf '\n<!-- SPCL:END -->\n'
+
+  } >"$out_file"
 }
 
 mkdir -p "$normalized_root"
@@ -330,7 +444,7 @@ if [[ ! -f "$interpreter_out/SKILL.spcl" ]]; then
   exit 1
 fi
 
-cp "$interpreter_out/SKILL.spcl" "$combo_dir/SKILL.spcl"
+write_combo_skill_md "$combo_dir/SKILL.md" "$interpreter_out/SKILL.spcl" "${resolved_skill_dirs[@]}"
 
 for i in "${!skills[@]}"; do
   merge_skill_reference "${resolved_skill_dirs[$i]}"
