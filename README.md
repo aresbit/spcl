@@ -103,11 +103,11 @@ llskill2spcl \
 parsespcl skill1dir skill2dir
 ```
 
-默认最终产物目录在 `trick/<skill1>-and-then-<skill2>`；中间规范化目录和解释器临时输出目录会被脚本清理掉。
+默认最终产物目录在 `trick/<skill1>-and-then-<skill2>`；中间规范化目录和解释器临时输出目录会被脚本清理掉。最终主文件输出为 `SKILL.md`。
 
 说明：
 - `parsespcl` 先把每个输入技能的 `SKILL.md` 通过 `llskill2spcl` 规范化成临时 `SKILL.spcl`
 - 然后脚本生成临时 `manifest.spcl`，调用 `spcl compose <manifest> --skills <dir> --out <dir>`
 - 解释器负责 `title` 追加、`skill.description` 追加、`SKILL.spcl` 深合并、额外 `.spcl` 文件深合并，以及 fixpoint 收敛
-- `parsespcl` 最后负责组装最终目录：复制解释器产出的主 `SKILL.spcl`，保留 `source-skills/*/SKILL.spcl`，并把原技能目录里的 `reference/` 或 `references/` 文件复制进结果目录
+- `parsespcl` 最后负责组装最终目录：把解释器产出的主 `SKILL.spcl` 包装进最终的 `SKILL.md`，顶部只生成普通 Markdown 说明，不注入任何 YAML/frontmatter 元数据；同时保留 `source-skills/*/SKILL.spcl`，并把原技能目录里的 `reference/` 或 `references/` 文件复制进结果目录；若原技能包含顶层 `script/` 或 `scripts/` 目录，则保留到组合技能的同名目录下，而不是挪进 `reference/`
 - 若你的解释器尚未实现 `compose` 子命令，脚本会直接报错退出
