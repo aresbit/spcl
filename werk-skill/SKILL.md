@@ -5,7 +5,7 @@ description: SPCL (Skill Composition Language) toolkit usage including werk comm
 
 # Werk Skill
 
-Werk is the German Red Dot aesthetic command for SPCL skill composition.
+Werk is the command for SPCL skill composition.
 
 ## Installation
 if werk --help ok do not install repo, then goto Quick Reference.

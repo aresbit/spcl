@@ -1,6 +1,6 @@
 # Werk
 
-**一键组合技能。德国红点审美。**
+**一键组合技能。**
 
 ```bash
 werk skill1 skill2
