@@ -208,15 +208,7 @@ fi
 tmp_skill_input="$(mktemp)"
 tmp_skill_tree="$(mktemp)"
 
-awk '
-  $0 == "<!-- SPCL:BEGIN -->" { in_block = 1; next }
-  in_block && $0 == "<!-- SPCL:END -->" { in_block = 0; next }
-  !in_block { print }
-' "$skill_md" >"$tmp_skill_input"
-
-if [[ ! -s "$tmp_skill_input" ]]; then
-  cp "$skill_md" "$tmp_skill_input"
-fi
+cp "$skill_md" "$tmp_skill_input"
 
 skill_tree_snapshot "$skill_dir" >"$tmp_skill_tree"
 

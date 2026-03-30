@@ -173,15 +173,13 @@ To make a skill composable:
    ```
 
 2. Add SPCL metadata in `SKILL.md`:
-   ```markdown
-   <!-- SPCL:BEGIN -->
+   ```spcl
    skill =
      name = my-skill
      description = Detailed description
      entry = SKILL.md
      refs =
        = reference/*.md
-   <!-- SPCL:END -->
    ```
 
 3. Place reference files in `reference/` directory
