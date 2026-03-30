@@ -276,55 +276,6 @@ merge_skill_reference() {
   done < <(find "$skill_dir" -type f ! -name 'SKILL.md' ! -name 'SKILL.spcl' | sort)
 }
 
-extract_skill_summary() {
-  local skill_md="$1"
-
-  python3 - "$skill_md" <<'PY'
-import pathlib
-import re
-import sys
-
-text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
-
-frontmatter = ""
-if text.startswith("---\n"):
-    parts = text.split("\n---\n", 1)
-    if len(parts) == 2:
-        frontmatter = parts[0][4:]
-        text = parts[1]
-
-desc_lines = []
-in_desc = False
-for line in frontmatter.splitlines():
-    if re.match(r"^description:\s*\|?\s*$", line):
-        in_desc = True
-        continue
-    if in_desc:
-        if line.startswith("  "):
-            desc_lines.append(line[2:])
-            continue
-        break
-
-if desc_lines:
-    print("\n".join(desc_lines).strip())
-    raise SystemExit
-
-match = re.search(r"^\*\*Description:\*\*\s*(.+(?:\n(?!\n|#|##|\*\*Name:|\*\*Description:).+)*)", text, re.M)
-if match:
-    print(match.group(1).strip())
-    raise SystemExit
-
-for para in re.split(r"\n\s*\n", text):
-    stripped = para.strip()
-    if not stripped:
-        continue
-    if stripped.startswith("#"):
-        continue
-    print(stripped)
-    break
-PY
-}
-
 normalize_embedded_spcl() {
   local spcl_file="$1"
 
@@ -340,36 +291,62 @@ print(text, end="")
 PY
 }
 
+build_combo_description() {
+  local count="$#"
+
+  if [[ "$count" -eq 0 ]]; then
+    printf 'Composite skill.'
+    return
+  fi
+
+  if [[ "$count" -eq 1 ]]; then
+    printf 'Composite skill based on %s.' "$1"
+    return
+  fi
+
+  if [[ "$count" -eq 2 ]]; then
+    printf 'Composite skill that chains %s and %s.' "$1" "$2"
+    return
+  fi
+
+  local joined=""
+  local i=0
+  for name in "$@"; do
+    if [[ "$i" -eq 0 ]]; then
+      joined="$name"
+    elif [[ "$i" -eq $((count - 1)) ]]; then
+      joined="$joined, and $name"
+    else
+      joined="$joined, $name"
+    fi
+    i=$((i + 1))
+  done
+
+  printf 'Composite skill that chains %s.' "$joined"
+}
+
 write_combo_skill_md() {
   local out_file="$1"
   local spcl_file="$2"
-  shift 2
-  local skill_dirs=("$@")
-  local i=0
+  local combo_description=""
+
+  combo_description="$(build_combo_description "${skills[@]}")"
 
   {
-    printf '# %s\n\n' "$combo_name"
-    printf '组合技能，按顺序串联以下能力：\n\n'
+    printf -- '---
+'
+    printf 'name: %s
+' "$combo_name"
+    printf 'description: %s
+' "$combo_description"
+    printf 'version: 1
+'
+    printf -- '---
 
-    for skill_dir in "${skill_dirs[@]}"; do
-      local skill_name="${skills[$i]}"
-      local skill_md="$skill_dir/SKILL.md"
-      local summary=""
-
-      summary="$(extract_skill_summary "$skill_md")"
-      printf -- '- `%s`' "$skill_name"
-      if [[ -n "$summary" ]]; then
-        printf ': %s' "$summary"
-      fi
-      printf '\n'
-
-      i=$((i + 1))
-    done
-
-    printf '\n<!-- SPCL:BEGIN -->\n'
+'
     normalize_embedded_spcl "$spcl_file"
-    printf '\n<!-- SPCL:END -->\n'
-
+    printf '
+'
   } >"$out_file"
 }
 
@@ -444,7 +421,7 @@ if [[ ! -f "$interpreter_out/SKILL.spcl" ]]; then
   exit 1
 fi
 
-write_combo_skill_md "$combo_dir/SKILL.md" "$interpreter_out/SKILL.spcl" "${resolved_skill_dirs[@]}"
+write_combo_skill_md "$combo_dir/SKILL.md" "$interpreter_out/SKILL.spcl"
 
 for i in "${!skills[@]}"; do
   merge_skill_reference "${resolved_skill_dirs[$i]}"

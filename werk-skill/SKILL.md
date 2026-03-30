@@ -1,6 +1,6 @@
 ---
 name: werk-skill
-description: SPCL (Skill Composition Language) toolkit usage including werk command for skill composition and spcl interpreter for skill merging. Use when working with SPCL skills, composing multiple skills with werk, converting SKILL.md to SKILL.spcl format, or building/installing SPCL from source.
+description: SPCL (Skill Composition Language) toolkit usage including werk command for skill composition and spcl interpreter for skill merging. Use when working with SPCL skills, composing multiple skills with werk, converting SKILL.md to SKILL.spcl format, and generating combined SKILL.md as YAML frontmatter plus parsed SPCL body.
 ---
 
 # Werk Skill
@@ -89,7 +89,7 @@ Werk performs skill composition through these steps:
 Output structure:
 ```
 trick/<skill1>-and-then-<skill2>/
-├── SKILL.md              # Combined skill documentation
+├── SKILL.md              # YAML frontmatter + combined SPCL body
 ├── SKILL.spcl            # Combined skill configuration
 ├── source-skills/        # Normalized individual skills
 │   ├── skill1/SKILL.spcl
@@ -138,6 +138,18 @@ Example:
 ```bash
 spcl compose manifest.spcl --skills ./skills --out ./output
 ```
+
+Generated `SKILL.md` format:
+
+```yaml
+---
+name: <combo-name>
+description: Composite skill that chains <skill-a>, <skill-b>, and <skill-c>.
+version: 1
+---
+```
+
+After the YAML header, the file contains only the composed SPCL content parsed from interpreter output. No extra narrative text or wrapper markers are added.
 
 ## Advanced Usage
 
